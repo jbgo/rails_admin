@@ -2,9 +2,9 @@ module RailsAdmin
   module Extensions
     module PaperTrail
       class VersionProxy
-        def initialize(version, user_class = User)
+        def initialize(version, user = nil)
           @version = version
-          @user_class = user_class
+          @user = user
         end
 
         def message
@@ -21,7 +21,7 @@ module RailsAdmin
         end
 
         def username
-          @user_class.find_by_id(@version.whodunnit).try(:email) || @version.whodunnit
+          @user.try(:email) || @version.whodunnit
         end
 
         def item
@@ -45,7 +45,12 @@ module RailsAdmin
         end
 
         def latest
-          ::Version.order('created_at desc').limit(100).map{|version| VersionProxy.new(version, @user_class)}
+          versions = ::Version.order('created_at desc').limit(100)
+          users = @user_class.where(@user_class.primary_key => versions.map(&:whodunnit))
+          users_by_id = Hash[users.map { |u| [u.id.to_s, u] }]
+          versions.map do |version|
+            VersionProxy.new(version, users_by_id[version.whodunnit])
+          end
         end
 
         def delete_object(object, model, user)
