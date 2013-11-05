@@ -46,11 +46,7 @@ module RailsAdmin
 
         def latest
           versions = ::Version.order('created_at desc').limit(100)
-          users = @user_class.where(@user_class.primary_key => versions.map(&:whodunnit))
-          users_by_id = Hash[users.map { |u| [u.id.to_s, u] }]
-          versions.map do |version|
-            VersionProxy.new(version, users_by_id[version.whodunnit])
-          end
+          versions_with_user_names(versions)
         end
 
         def delete_object(object, model, user)
@@ -76,7 +72,7 @@ module RailsAdmin
           versions = versions.where("event LIKE ?", "%#{query}%") if query.present?
           versions = versions.order(sort_reverse == "true" ? "#{sort} DESC" : sort)
           versions = all ? versions : versions.send(Kaminari.config.page_method_name, page.presence || "1").per(per_page)
-          versions.map{|version| VersionProxy.new(version, @user_class)}
+          versions_with_user_names(versions)
         end
 
         def listing_for_object(model, object, query, sort, sort_reverse, all, page, per_page = (RailsAdmin::Config.default_items_per_page || 20))
@@ -90,7 +86,15 @@ module RailsAdmin
           versions = versions.where("event LIKE ?", "%#{query}%") if query.present?
           versions = versions.order(sort_reverse == "true" ? "#{sort} DESC" : sort)
           versions = all ? versions : versions.send(Kaminari.config.page_method_name, page.presence || "1").per(per_page)
-          versions.map{|version| VersionProxy.new(version, @user_class)}
+          versions_with_user_names(versions)
+        end
+
+        def versions_with_user_names(versions)
+          users = @user_class.where(@user_class.primary_key => versions.map(&:whodunnit))
+          users_by_id = Hash[users.map { |u| [u.id.to_s, u] }]
+          versions.map do |version|
+            VersionProxy.new(version, users_by_id[version.whodunnit])
+          end
         end
       end
     end
